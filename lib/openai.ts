@@ -1,13 +1,26 @@
 import OpenAI from 'openai';
 import { ExtractedDates } from '@/types/contract';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialize OpenAI to avoid build-time errors
+let openai: OpenAI | null = null;
+
+function getOpenAI() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 export async function extractContractDates(contractText: string): Promise<ExtractedDates> {
   try {
-    const completion = await openai.chat.completions.create({
+    const client = getOpenAI();
+    if (!client) {
+      throw new Error('OpenAI is not configured. Please set OPENAI_API_KEY environment variable.');
+    }
+    
+    const completion = await client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {

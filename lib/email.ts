@@ -1,6 +1,14 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialize Resend to avoid build-time errors
+let resend: Resend | null = null;
+
+function getResend() {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 interface SendReminderEmailParams {
   to: string;
@@ -85,7 +93,12 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
   `;
 
   try {
-    await resend.emails.send({
+    const client = getResend();
+    if (!client) {
+      throw new Error('Resend is not configured. Please set RESEND_API_KEY environment variable.');
+    }
+    
+    await client.emails.send({
       from: 'RenewalRadar <noreply@renewalradar.com>',
       to,
       subject,
